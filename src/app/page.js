@@ -2,53 +2,41 @@
 import React, { useState } from 'react'
 import Navbar from "@/components/Navbar";
 import { httpRequestMethods as methods } from '../../constants'
+import axios from 'axios';
+import prettyBytes from 'pretty-bytes';
 
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable"
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup, } from "@/components/ui/resizable"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { toast } from 'sonner'
 
 import { Button } from "@/components/ui/button";
-import { Input } from '@/components/ui/input';
-import { Trash2 } from 'lucide-react';
+import KeyValueForm from '@/components/KeyValueForm';
+
+import { updateKeyValue } from '@/lib/utils';
 
 export default function Home() {
 
   const [method, setMethod] = useState('GET')
   const [url, setUrl] = useState('')
-  const [urlError, setUrlError] = useState(null)
   const [queryParams, setQueryParams] = useState([{ key: '', value: '' }]);
   const [headers, setHeaders] = useState([{ key: '', value: '' }]);
   const [jsonBody, setJsonBody] = useState('');
   const [response, setResponse] = useState(null);
   console.log(response);
 
-  const setQueryParamsKey = (e, index) => {
-    const newParams = [...queryParams];
-    newParams[index].key = e.target.value;
-    setQueryParams(newParams);
-  }
+  // For Query Params
+  const handleQueryParamKeyChange = (e, index) => updateKeyValue(e, index, queryParams, setQueryParams, "key");
+  const handleQueryParamValueChange = (e, index) => updateKeyValue(e, index, queryParams, setQueryParams, "value");
 
-  const setQueryParamsValue = (e, index) => {
-    const newParams = [...queryParams];
-    newParams[index].value = e.target.value;
-    setQueryParams(newParams);
-  }
+  // For Headers
+  const handleHeaderKeyChange = (e, index) => updateKeyValue(e, index, headers, setHeaders, "key");
+  const handleHeaderValueChange = (e, index) => updateKeyValue(e, index, headers, setHeaders, "value");
+
 
   const handleRequest = async (e) => {
     e.preventDefault();
-    if (!url) setUrlError("Please enter a valid URL to make a request.")
+    if (!url) toast(<h1 className='text-red-400'>Please enter a valid URL to complete the request.</h1>)
 
     const params = queryParams.reduce((acc, { key, value }) => (key ? { ...acc, [key]: value } : acc), {});
     const headersObj = headers.reduce((acc, { key, value }) => (key ? { ...acc, [key]: value } : acc), {});
@@ -66,13 +54,16 @@ export default function Home() {
 
       setResponse({
         status: res.status,
-        time: Math.round(endTime - startTime),
+        time: Math.round(endTime - startTime) + 'ms',
         size: prettyBytes(JSON.stringify(res.data).length + JSON.stringify(res.headers).length),
         body: JSON.stringify(res.data, null, 2),
         headers: res.headers,
       });
     } catch (error) {
-      setResponse({ status: error.response?.status || 'Error', body: JSON.stringify(error.response?.data || error.message, null, 2) });
+      toast(<div className='flex flex-col gap-2'>
+        <h1 className='text-red-400'>Error: {error.response?.status || 'Unknown Error'}</h1>
+        <pre>{JSON.stringify(error.response?.data || error.message, null, 2)}</pre>
+      </div>);
     }
   };
 
@@ -115,13 +106,14 @@ export default function Home() {
               </TabsList>
               <TabsContent value="query-params" className="max-w-full flex flex-col gap-4 p-4 border border-neutral-700 border-dashed rounded-lg mx-4">
                 {queryParams.map((param, index) => (
-                  <div className='w-full flex gap-2' key={index}>
-                    <Input type='text' placeholder='Key' value={param.key} onChange={(e) => setQueryParamsKey(e, index)} />
-                    <Input type='text' placeholder='Value' value={param.value} onChange={(e) => setQueryParamsValue(e, index)} />
-                    <Button variant='outline' className="hover:cursor-pointer" onClick={() => setQueryParams(queryParams.filter((_, i) => i !== index))}>
-                      <Trash2 />
-                    </Button>
-                  </div>
+                  <KeyValueForm
+                    key={index}
+                    param={param}
+                    index={index}
+                    onKeyChange={handleQueryParamKeyChange}
+                    onValueChange={handleQueryParamValueChange}
+                    onRemove={(i) => setQueryParams(queryParams.filter((_, idx) => idx !== i))}
+                  />
                 ))}
                 <Button variant='outline' className="hover:cursor-pointer" onClick={() => setQueryParams([...queryParams, { key: '', value: '' }])}>
                   Add +
@@ -130,13 +122,14 @@ export default function Home() {
               </TabsContent>
               <TabsContent value="headers" className="max-w-full flex flex-col gap-4 p-4 border border-neutral-700 border-dashed rounded-lg mx-4">
                 {headers.map((header, index) => (
-                  <div className='w-full flex gap-2' key={index}>
-                    <Input type='text' placeholder='Key' value={header.key} onChange={(e) => setQueryParamsKey(e, index)} />
-                    <Input type='text' placeholder='Value' value={header.value} onChange={(e) => setQueryParamsValue(e, index)} />
-                    <Button variant='outline' className="hover:cursor-pointer" onClick={() => setHeaders(headers.filter((_, i) => i !== index))}>
-                      <Trash2 />
-                    </Button>
-                  </div>
+                  <KeyValueForm
+                    key={index}
+                    param={header}
+                    index={index}
+                    onKeyChange={handleHeaderKeyChange}
+                    onValueChange={handleHeaderValueChange}
+                    onRemove={(i) => setHeaders(headers.filter((_, idx) => idx !== i))}
+                  />
                 ))}
                 <Button variant='outline' className="hover:cursor-pointer" onClick={() => setHeaders([...headers, { key: '', value: '' }])}>
                   Add +
