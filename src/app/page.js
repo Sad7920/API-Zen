@@ -71,7 +71,7 @@ export default function Home() {
     <div className="w-full h-screen ">
       <ResizablePanelGroup direction='horizontal' className="p-4 h-full w-full flex gap-x-2">
         {/* LEFT PART */}
-        <ResizablePanel className=" h-full w-full p-4 border border-neutral-700 border-dashed flex flex-col gap-y-6 rounded-lg md:min-w-lg">
+        <ResizablePanel className=" h-full w-full p-4 border border-neutral-700  border-dashed flex flex-col gap-y-12 rounded-lg md:min-w-lg">
 
           {/* NAVBAR */}
           <div className="w-full flex items-center">
@@ -97,7 +97,7 @@ export default function Home() {
 
           {/* TABS SECTION */}
 
-          <div className="w-full">
+          <div className="w-full overflow-y-scroll">
             <Tabs defaultValue="query-params" className="w-full">
               <TabsList className="grid w-full grid-cols-3 ">
                 <TabsTrigger value="query-params">Query Params</TabsTrigger>
@@ -144,6 +144,15 @@ export default function Home() {
               </TabsContent>
             </Tabs>
           </div>
+
+          {/* RESPONSE DETAILS */}
+          {response && (
+            <div className="w-full p-1 justify-around rounded-xl border flex gap-x-2 border-neutral-700 border-dashed">
+              <div className='rounded-md px-3 px-1 dark:bg-neutral-800 bg-neutral-200' >Status: <span className='text-green-600 font-medium dark:text-green-400'>{response.status}</span></div>
+              <div className='rounded-md px-2 px-1 bg-neutral-800' >Time: <span>{response.time}</span></div>
+              <div className='rounded-md px-2 px-1 bg-neutral-800' >Size: <span>{response.size}</span></div>
+            </div>
+          )}
 
         </ResizablePanel>
         <ResizableHandle withHandle className="hover:border hover:border-blue-500 my-6" />
