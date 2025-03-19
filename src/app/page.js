@@ -14,6 +14,12 @@ import { Button } from "@/components/ui/button";
 import KeyValueForm from '@/components/KeyValueForm';
 
 import { updateKeyValue } from '@/lib/utils';
+import { highlight } from '@/lib/shared';
+
+import ReactCodeMirror from '@uiw/react-codemirror';
+import { json } from '@codemirror/lang-json'
+import { dracula } from '@uiw/codemirror-theme-dracula'
+import { Copy, Rocket } from 'lucide-react';
 
 export default function Home() {
 
@@ -21,8 +27,9 @@ export default function Home() {
   const [url, setUrl] = useState('')
   const [queryParams, setQueryParams] = useState([{ key: '', value: '' }]);
   const [headers, setHeaders] = useState([{ key: '', value: '' }]);
-  const [jsonBody, setJsonBody] = useState('');
+  const [jsonBody, setJsonBody] = useState('{\n  \"key\": \"value\"\n}');
   const [response, setResponse] = useState(null);
+  const [highlightedResponse, setHighlightedResponse] = useState(null)
   console.log(response);
 
   // For Query Params
@@ -48,24 +55,30 @@ export default function Home() {
         method,
         params,
         headers: headersObj,
-        data: jsonBody ? JSON.parse(jsonBody) : undefined,
+        data: jsonBody !== '{\n  \"key\": \"value\"\n}' ? JSON.parse(jsonBody) : undefined,
       });
       const endTime = performance.now();
 
-      setResponse({
+      const responseData = {
         status: res.status,
         time: Math.round(endTime - startTime) + 'ms',
         size: prettyBytes(JSON.stringify(res.data).length + JSON.stringify(res.headers).length),
         body: JSON.stringify(res.data, null, 2),
         headers: res.headers,
-      });
+      };
+      setResponse(responseData);
+      const highlightedData = await highlight(responseData.body, 'json')
+      setHighlightedResponse(highlightedData)
     } catch (error) {
+      console.log(error.response?.message);
       toast(<div className='flex flex-col gap-2'>
         <h1 className='text-red-400'>Error: {error.response?.status || 'Unknown Error'}</h1>
         <pre>{JSON.stringify(error.response?.data || error.message, null, 2)}</pre>
       </div>);
     }
   };
+
+  console.log(highlightedResponse);
 
   return (
     <div className="w-full h-screen ">
@@ -136,10 +149,15 @@ export default function Home() {
                 </Button>
 
               </TabsContent>
-              <TabsContent value="json">
-                <div>
-                  <h3 className="font-semibold">JSON Body</h3>
-                  <textarea value={jsonBody} onChange={(e) => setJsonBody(e.target.value)} placeholder='{\n  \" key\": \"value\"\n}' className="border p-2 w-full h-24" />
+              <TabsContent value="json" className="mx-4">
+                <div className="h-full overflow-auto rounded-md ">
+                  <ReactCodeMirror
+                    value={jsonBody}
+                    extensions={[json()]}  // Use `extensions` instead of `mode`
+                    theme={dracula}  // Pass `theme` as a direct prop
+                    onChange={(value) => setJsonBody(value)}
+                    basicSetup={{ lineNumbers: true }}  // Enable line numbers properly
+                  />
                 </div>
               </TabsContent>
             </Tabs>
@@ -158,7 +176,37 @@ export default function Home() {
         <ResizableHandle withHandle className="hover:border hover:border-blue-500 my-6" />
         {/* RIGHT PART */}
         <ResizablePanel direction="horizontal" className="h-full w-full p-4 border border-neutral-700 border-dashed  md:min-w-lg rounded-lg">
+          <Tabs defaultValue="body" className="w-full max-h-full">
+            <TabsList className="grid w-full grid-cols-2 ">
+              <TabsTrigger value="body">Body</TabsTrigger>
+              <TabsTrigger value="headers">Headers</TabsTrigger>
+            </TabsList>
+            {highlightedResponse ?
+              (
+                <TabsContent
+                  value="body"
+                  className="flex flex-col gap-4 p-1 border border-neutral-700 border-dashed mb-5 z-10 rounded-lg mx-4 h-full overflow-hidden"
+                >
+                  <div className="flex-1 h-full overflow-auto  rounded-sm">
+                    <pre className="text-sm overflow-auto rounded-sm">
+                      {highlightedResponse}
+                    </pre>
+                  </div>
+                </TabsContent>
+              ) : (<TabsContent
+                value="body"
+                className="flex flex-col h-full gap-4 px-4 py-10 text-neutral-300 text-center justify-center  items-center border border-neutral-700 border-dashed  rounded-lg mx-4 h-fit"
+              >
+                <Rocket size={60} />
+                <p>Click send to get a response</p>
+              </TabsContent>)
+            }
 
+            <TabsContent value="headers" className="max-w-full flex flex-col gap-4 p-4 border border-neutral-700 border-dashed rounded-lg mx-4">
+
+            </TabsContent>
+          </Tabs>
+          {/* {response ? <CodeBlock initial={highlightedResponse} /> : <p>Make a request to see the response here.</p>} */}
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
