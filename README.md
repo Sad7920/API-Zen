@@ -87,4 +87,4 @@ Open [http://localhost:3000](http://localhost:3000) to view the app in your brow
 
 ---
 
-Made with ❤️ by [sad.codes](https://github.com/sad-codes)
+Made with ❤️ by [sad.codes](https://sad.codes)
