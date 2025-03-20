@@ -1,5 +1,5 @@
 "use client"
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Navbar from "@/components/Navbar";
 import { httpRequestMethods as methods } from '../../constants'
 import axios from 'axios';
@@ -19,17 +19,23 @@ import { highlight } from '@/lib/shared';
 import ReactCodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json'
 import { dracula } from '@uiw/codemirror-theme-dracula'
-import { Copy, Rocket } from 'lucide-react';
+import { githubLight } from '@uiw/codemirror-theme-github'
+import { Rocket } from 'lucide-react';
 
 export default function Home() {
+
 
   const [method, setMethod] = useState('GET')
   const [url, setUrl] = useState('')
   const [queryParams, setQueryParams] = useState([{ key: '', value: '' }]);
   const [headers, setHeaders] = useState([{ key: '', value: '' }]);
   const [jsonBody, setJsonBody] = useState('{\n  \"key\": \"value\"\n}');
+
   const [response, setResponse] = useState(null);
   const [highlightedResponse, setHighlightedResponse] = useState(null)
+  const [responseHeaders, setResponseHeaders] = useState({})
+
+  const [theme, setTheme] = useState('')
   console.log(response);
 
   // For Query Params
@@ -40,10 +46,29 @@ export default function Home() {
   const handleHeaderKeyChange = (e, index) => updateKeyValue(e, index, headers, setHeaders, "key");
   const handleHeaderValueChange = (e, index) => updateKeyValue(e, index, headers, setHeaders, "value");
 
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    setTheme(mediaQuery.matches ? "dark" : "light");
+
+    // Listen for changes in system theme
+    const handleThemeChange = (e) => {
+      setTheme(e.matches ? "dark" : "light");
+    };
+
+    mediaQuery.addEventListener("change", handleThemeChange);
+
+    return () => {
+      mediaQuery.removeEventListener("change", handleThemeChange);
+    };
+  }, []);
+
 
   const handleRequest = async (e) => {
     e.preventDefault();
-    if (!url) toast(<h1 className='text-red-400'>Please enter a valid URL to complete the request.</h1>)
+    if (!url || !method) {
+      toast(<h1 className='text-red-400'>Please enter a valid URL to complete the request.</h1>)
+      return
+    }
 
     const params = queryParams.reduce((acc, { key, value }) => (key ? { ...acc, [key]: value } : acc), {});
     const headersObj = headers.reduce((acc, { key, value }) => (key ? { ...acc, [key]: value } : acc), {});
@@ -55,7 +80,7 @@ export default function Home() {
         method,
         params,
         headers: headersObj,
-        data: jsonBody !== '{\n  \"key\": \"value\"\n}' ? JSON.parse(jsonBody) : undefined,
+        data: jsonBody !== '{\n  \"key\": \"value\"\n}' && jsonBody ? JSON.parse(jsonBody) : undefined,
       });
       const endTime = performance.now();
 
@@ -67,10 +92,16 @@ export default function Home() {
         headers: res.headers,
       };
       setResponse(responseData);
+      setResponseHeaders({
+        cacheControl: responseData.headers.get('cache-control'),
+        contentType: responseData.headers.get('content-type'),
+        expires: responseData.headers.get('expires'),
+        pragma: responseData.headers.get('pragma'),
+      })
       const highlightedData = await highlight(responseData.body, 'json')
       setHighlightedResponse(highlightedData)
     } catch (error) {
-      console.log(error.response?.message);
+      console.log(error);
       toast(<div className='flex flex-col gap-2'>
         <h1 className='text-red-400'>Error: {error.response?.status || 'Unknown Error'}</h1>
         <pre>{JSON.stringify(error.response?.data || error.message, null, 2)}</pre>
@@ -78,7 +109,7 @@ export default function Home() {
     }
   };
 
-  console.log(highlightedResponse);
+  console.log(response);
 
   return (
     <div className="w-full h-screen ">
@@ -154,7 +185,7 @@ export default function Home() {
                   <ReactCodeMirror
                     value={jsonBody}
                     extensions={[json()]}  // Use `extensions` instead of `mode`
-                    theme={dracula}  // Pass `theme` as a direct prop
+                    theme={theme == 'dark' ? dracula : githubLight}  // Pass `theme` as a direct prop
                     onChange={(value) => setJsonBody(value)}
                     basicSetup={{ lineNumbers: true }}  // Enable line numbers properly
                   />
@@ -166,9 +197,9 @@ export default function Home() {
           {/* RESPONSE DETAILS */}
           {response && (
             <div className="w-full p-1 justify-around rounded-xl border flex gap-x-2 border-neutral-700 border-dashed">
-              <div className='rounded-md px-3 px-1 dark:bg-neutral-800 bg-neutral-200' >Status: <span className='text-green-600 font-medium dark:text-green-400'>{response.status}</span></div>
-              <div className='rounded-md px-2 px-1 bg-neutral-800' >Time: <span>{response.time}</span></div>
-              <div className='rounded-md px-2 px-1 bg-neutral-800' >Size: <span>{response.size}</span></div>
+              <h1 className='rounded-md px-3 py-1 dark:bg-neutral-800 bg-neutral-200' >Status: <span className='text-green-600 font-medium dark:text-green-400'>{response.status}</span></h1>
+              <h1 className='rounded-md px-2 py-1 dark:bg-neutral-800 bg-neutral-200' >Time: <span>{response.time}</span></h1>
+              <h1 className='rounded-md px-2 py-1 dark:bg-neutral-800 dark:bg-neutral-800 bg-neutral-200' >Size: <span>{response.size}</span></h1>
             </div>
           )}
 
@@ -188,25 +219,31 @@ export default function Home() {
                   className="flex flex-col gap-4 p-1 border border-neutral-700 border-dashed mb-5 z-10 rounded-lg mx-4 h-full overflow-hidden"
                 >
                   <div className="flex-1 h-full overflow-auto  rounded-sm">
-                    <pre className="text-sm overflow-auto rounded-sm">
-                      {highlightedResponse}
+                    <pre className="text-sm overflow-auto rounded-sm text-wrap">
+                      {highlightedResponse[theme]}
                     </pre>
                   </div>
                 </TabsContent>
               ) : (<TabsContent
                 value="body"
-                className="flex flex-col h-full gap-4 px-4 py-10 text-neutral-300 text-center justify-center  items-center border border-neutral-700 border-dashed  rounded-lg mx-4 h-fit"
+                className="flex flex-col h-full gap-4 px-4 py-10 text-neutral-500 dark:text-neutral-300 text-center justify-center  items-center border border-neutral-700 border-dashed  rounded-lg mx-4 h-fit"
               >
                 <Rocket size={60} />
                 <p>Click send to get a response</p>
               </TabsContent>)
             }
 
-            <TabsContent value="headers" className="max-w-full flex flex-col gap-4 p-4 border border-neutral-700 border-dashed rounded-lg mx-4">
-
+            <TabsContent value="headers" className="max-w-full flex flex-col  p-4 border border-neutral-700 border-dashed rounded-lg mx-4">
+              {responseHeaders && (<div className='w-full grid grid-cols-1 gap-4'>
+                <div className='rounded-md px-2 py-1 dark:bg-neutral-800 bg-neutral-200' >Cache-control: <span className='text-blue-400'>{responseHeaders.cacheControl}</span></div>
+                <div className='rounded-md px-2 py-1  dark:bg-neutral-800 bg-neutral-200' >Content-type: <span className='text-blue-400'>{responseHeaders.contentType}</span></div>
+                <div className='rounded-md px-2 py-1  dark:bg-neutral-800 bg-neutral-200' >Expires: <span className='text-blue-400'>{responseHeaders.expires}</span></div>
+                <div className='rounded-md px-2 py-1  dark:bg-neutral-800 bg-neutral-200' >Pragma: <span className='text-blue-400'>{responseHeaders.pragma}</span></div>
+              </div>)}
+              <div className='w-full'>
+              </div>
             </TabsContent>
           </Tabs>
-          {/* {response ? <CodeBlock initial={highlightedResponse} /> : <p>Make a request to see the response here.</p>} */}
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>

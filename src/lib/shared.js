@@ -8,15 +8,26 @@ export async function highlight(code, lang) {
         code = JSON.stringify(code);
     }
 
-    const out = await codeToHast(code, {
+    const dark = await codeToHast(code, {
         lang,
         theme: 'dracula',
     });
-
-    return toJsxRuntime(out, {
-        Fragment,
-        jsx,
-        jsxs,
+    const light = await codeToHast(code, {
+        lang,
+        theme: 'github-light',
     });
+
+    return {
+        dark: toJsxRuntime(dark, {
+            Fragment,
+            jsx,
+            jsxs,
+        }),
+        light: toJsxRuntime(light, {
+            Fragment,
+            jsx,
+            jsxs,
+        })
+    };
 }
 
