@@ -21,6 +21,7 @@ import { json } from '@codemirror/lang-json'
 import { dracula } from '@uiw/codemirror-theme-dracula'
 import { githubLight } from '@uiw/codemirror-theme-github'
 import { Rocket } from 'lucide-react';
+import Footer from '@/components/Footer';
 
 export default function Home() {
 
@@ -202,9 +203,11 @@ export default function Home() {
               <h1 className='rounded-md px-2 py-1 dark:bg-neutral-800 dark:bg-neutral-800 bg-neutral-200' >Size: <span>{response.size}</span></h1>
             </div>
           )}
-
+          <Footer />
         </ResizablePanel>
         <ResizableHandle withHandle className="hover:border hover:border-blue-500 my-6" />
+
+
         {/* RIGHT PART */}
         <ResizablePanel direction="horizontal" className="h-full w-full p-4 border border-neutral-700 border-dashed  md:min-w-lg rounded-lg">
           <Tabs defaultValue="body" className="w-full max-h-full">
